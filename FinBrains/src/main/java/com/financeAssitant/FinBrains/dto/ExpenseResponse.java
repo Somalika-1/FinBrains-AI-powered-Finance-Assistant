@@ -16,7 +16,7 @@ public class ExpenseResponse {
     private String id;
     private Double amount;
     private String description;
-    private CategoryResponse category;
+    private List<CategoryResponse> categories;
     private String subcategory;
     private LocalDateTime date;
     private PaymentMethodResponse paymentMethod;
@@ -33,8 +33,6 @@ public class ExpenseResponse {
     public static class CategoryResponse {
         private String id;
         private String name;
-        private String icon;
-        private String color;
     }
 
     @Data

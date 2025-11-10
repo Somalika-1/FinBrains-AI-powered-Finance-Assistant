@@ -6,6 +6,8 @@ import com.financeAssitant.FinBrains.dto.ExpenseResponse;
 import com.financeAssitant.FinBrains.dto.UpdateExpenseRequest;
 import com.financeAssitant.FinBrains.entity.Expense;
 import com.financeAssitant.FinBrains.repository.ExpenseRepository;
+import com.financeAssitant.FinBrains.repository.CategoryRepository;
+import com.financeAssitant.FinBrains.entity.Category;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,7 +26,28 @@ public class ExpenseService {
     @Autowired
     private ExpenseRepository expenseRepository;
 
+    @Autowired
+    private CategoryRepository categoryRepository;
+
     public ExpenseResponse createExpense(String userId, CreateExpenseRequest request) {
+        // Map category IDs to embedded CategoryRef list
+        List<Expense.CategoryRef> categoryRefs = null;
+        if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
+            List<Category> categories = categoryRepository.findAllById(request.getCategoryIds());
+            // Validate that all provided IDs exist
+            if (categories.size() != request.getCategoryIds().size()) {
+                throw new IllegalArgumentException("One or more category IDs are invalid");
+            }
+            // Validate ownership
+            boolean allOwnedByUser = categories.stream().allMatch(c -> userId.equals(c.getUserId()));
+            if (!allOwnedByUser) {
+                throw new IllegalArgumentException("One or more categories do not belong to the current user");
+            }
+            categoryRefs = categories.stream()
+                    .map(c -> Expense.CategoryRef.builder().id(c.getId()).name(c.getName()).build())
+                    .collect(Collectors.toList());
+        }
+
         // Build expense entity
         Expense expense = Expense.builder()
                 .userId(userId)
@@ -33,12 +56,7 @@ public class ExpenseService {
                 .date(request.getDate() != null ? request.getDate() : LocalDateTime.now())
                 .subcategory(request.getSubcategory())
                 .tags(request.getTags())
-                .category(Expense.Category.builder()
-                        .id(request.getCategoryId())
-                        .name(request.getCategoryName())
-                        .icon("💰") // Default icon
-                        .color("#007bff") // Default color
-                        .build())
+                .categories(categoryRefs)
                 .paymentMethod(Expense.PaymentMethod.builder()
                         .type(request.getPaymentType() != null ? request.getPaymentType() : "cash")
                         .provider(request.getPaymentProvider())
@@ -80,16 +98,19 @@ public class ExpenseService {
         if (request.getDate() != null) {
             expense.setDate(request.getDate());
         }
-        if (request.getCategoryId() != null || request.getCategoryName() != null) {
-            if (expense.getCategory() == null) {
-                expense.setCategory(new Expense.Category());
+        if (request.getCategoryIds() != null) {
+            List<Category> categories = categoryRepository.findAllById(request.getCategoryIds());
+            if (categories.size() != request.getCategoryIds().size()) {
+                throw new IllegalArgumentException("One or more category IDs are invalid");
             }
-            if (request.getCategoryId() != null) {
-                expense.getCategory().setId(request.getCategoryId());
+            boolean allOwnedByUser = categories.stream().allMatch(c -> userId.equals(c.getUserId()));
+            if (!allOwnedByUser) {
+                throw new IllegalArgumentException("One or more categories do not belong to the current user");
             }
-            if (request.getCategoryName() != null) {
-                expense.getCategory().setName(request.getCategoryName());
-            }
+            List<Expense.CategoryRef> refs = categories.stream()
+                    .map(c -> Expense.CategoryRef.builder().id(c.getId()).name(c.getName()).build())
+                    .collect(Collectors.toList());
+            expense.setCategories(refs);
         }
         if (request.getSubcategory() != null) {
             expense.setSubcategory(request.getSubcategory());
@@ -163,7 +184,7 @@ public class ExpenseService {
     }
 
     public List<ExpenseResponse> getExpensesByCategory(String userId, String categoryId) {
-        List<Expense> expenses = expenseRepository.findByUserIdAndCategory_IdOrderByDateDesc(userId, categoryId);
+        List<Expense> expenses = expenseRepository.findByUserIdAndCategories_IdOrderByDateDesc(userId, categoryId);
         return expenses.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
@@ -216,13 +237,13 @@ public class ExpenseService {
                 .recurringFrequency(expense.getRecurring() != null ? expense.getRecurring().getFrequency() : null)
                 .createdAt(expense.getMetadata() != null ? expense.getMetadata().getCreatedAt() : null)
                 .updatedAt(expense.getMetadata() != null ? expense.getMetadata().getUpdatedAt() : null)
-                .category(expense.getCategory() != null ?
-                        ExpenseResponse.CategoryResponse.builder()
-                                .id(expense.getCategory().getId())
-                                .name(expense.getCategory().getName())
-                                .icon(expense.getCategory().getIcon())
-                                .color(expense.getCategory().getColor())
-                                .build() : null)
+                .categories(expense.getCategories() != null ?
+                        expense.getCategories().stream()
+                                .map(c -> ExpenseResponse.CategoryResponse.builder()
+                                        .id(c.getId())
+                                        .name(c.getName())
+                                        .build())
+                                .collect(Collectors.toList()) : null)
                 .paymentMethod(expense.getPaymentMethod() != null ?
                         ExpenseResponse.PaymentMethodResponse.builder()
                                 .type(expense.getPaymentMethod().getType())

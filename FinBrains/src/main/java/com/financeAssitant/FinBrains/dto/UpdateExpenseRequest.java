@@ -24,8 +24,8 @@ public class UpdateExpenseRequest {
     @Size(max = 255, message = "Description too long")
     private String description;
 
-    private String categoryId;
-    private String categoryName;
+    // Multiple categories by ID
+    private List<String> categoryIds;
     private String subcategory;
     private LocalDateTime date;
 

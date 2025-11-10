@@ -26,10 +26,11 @@ public class ExpenseController {
 
     // Create new expense
     @PostMapping
-    public ResponseEntity<?> createExpense(@Valid @RequestBody CreateExpenseRequest request) {
+    public ResponseEntity<?> createExpense(@RequestHeader(value = "User-ID", required = false) String userIdHeader,
+                                           @Valid @RequestBody CreateExpenseRequest request) {
         try {
             // Get user ID from security context instead of header
-            String userId = getCurrentUserId();
+            String userId = resolveUserId(userIdHeader);
 
             ExpenseResponse expenseResponse = expenseService.createExpense(userId, request);
 
@@ -49,21 +50,28 @@ public class ExpenseController {
     }
 
     // Helper method
-    private String getCurrentUserId() {
+    private String resolveUserId(String headerUserId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated()) {
-            return (String) authentication.getPrincipal();
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof String s && s != null && !s.isBlank()) {
+                return s;
+            }
         }
-        throw new RuntimeException("User not authenticated");
+        if (headerUserId != null && !headerUserId.isBlank()) {
+            return headerUserId;
+        }
+        throw new RuntimeException("User not authenticated and User-ID header missing");
     }
 
     // Get all expenses for user (with pagination)
     @GetMapping
-    public ResponseEntity<?> getUserExpenses(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<?> getUserExpenses(@RequestHeader(value = "User-ID", required = false) String userIdHeader,
+                                             @RequestParam(defaultValue = "0") int page,
                                              @RequestParam(defaultValue = "20") int size) {
         try {
             // Get user ID from JWT token via security context
-            String userId = getCurrentUserId();
+            String userId = resolveUserId(userIdHeader);
 
             Page<ExpenseResponse> expenses = expenseService.getUserExpensesPaginated(userId, page, size);
 
@@ -87,10 +95,11 @@ public class ExpenseController {
 
     // Get expense by ID
     @GetMapping("/{expenseId}")
-    public ResponseEntity<?> getExpenseById(@PathVariable String expenseId) {
+    public ResponseEntity<?> getExpenseById(@RequestHeader(value = "User-ID", required = false) String userIdHeader,
+                                            @PathVariable String expenseId) {
         try {
 
-            String userId = getCurrentUserId();
+            String userId = resolveUserId(userIdHeader);
             ExpenseResponse expense = expenseService.getExpenseById(userId, expenseId);
 
             Map<String, Object> response = new HashMap<>();
@@ -109,10 +118,11 @@ public class ExpenseController {
 
     // Update expense
     @PutMapping("/{expenseId}")
-    public ResponseEntity<?> updateExpense(@PathVariable String expenseId,
+    public ResponseEntity<?> updateExpense(@RequestHeader(value = "User-ID", required = false) String userIdHeader,
+                                           @PathVariable String expenseId,
                                            @Valid @RequestBody UpdateExpenseRequest request) {
         try {
-            String userId = getCurrentUserId();
+            String userId = resolveUserId(userIdHeader);
             ExpenseResponse expenseResponse = expenseService.updateExpense(userId, expenseId, request);
 
             Map<String, Object> response = new HashMap<>();
@@ -132,9 +142,10 @@ public class ExpenseController {
 
     // Delete expense
     @DeleteMapping("/{expenseId}")
-    public ResponseEntity<?> deleteExpense(@PathVariable String expenseId,
-                                           @RequestHeader("User-ID") String userId) {
+    public ResponseEntity<?> deleteExpense(@RequestHeader(value = "User-ID", required = false) String userIdHeader,
+                                           @PathVariable String expenseId) {
         try {
+            String userId = resolveUserId(userIdHeader);
             expenseService.deleteExpense(userId, expenseId);
 
             Map<String, Object> response = new HashMap<>();
@@ -152,9 +163,10 @@ public class ExpenseController {
     }
 
     @GetMapping("/category/{categoryId}")
-    public ResponseEntity<?> getExpensesByCategory(@PathVariable String categoryId,
-                                                   @RequestHeader("User-ID") String userId) {
+    public ResponseEntity<?> getExpensesByCategory(@RequestHeader(value = "User-ID", required = false) String userIdHeader,
+                                                   @PathVariable String categoryId) {
         try {
+            String userId = resolveUserId(userIdHeader);
             List<ExpenseResponse> expenses = expenseService.getExpensesByCategory(userId, categoryId);
 
             Map<String, Object> response = new HashMap<>();

@@ -26,7 +26,7 @@ public class Expense {
 
     private Double amount;
     private String description;
-    private Category category;
+    private List<CategoryRef> categories;
     private String subcategory;
     private LocalDateTime date;
     private PaymentMethod paymentMethod;
@@ -38,11 +38,9 @@ public class Expense {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
-    public static class Category {
+    public static class CategoryRef {
         private String id;
         private String name;
-        private String icon;
-        private String color;
     }
 
     @Data
