@@ -56,11 +56,11 @@ public class CategoryService {
 
         categoryRepository.deleteById(id);
 
-        // Remove references from only this user's expenses
-        var expenses = expenseRepository.findByUserIdAndCategories_Id(userId, id);
+        // Remove references from only this user's expenses (single category)
+        var expenses = expenseRepository.findByUserIdAndCategory_Id(userId, id);
         expenses.forEach(expense -> {
-            if (expense.getCategories() != null) {
-                expense.getCategories().removeIf(c -> id.equals(c.getId()));
+            if (expense.getCategory() != null && id.equals(expense.getCategory().getId())) {
+                expense.setCategory(null);
             }
         });
         expenseRepository.saveAll(expenses);

@@ -1,6 +1,5 @@
 package com.financeAssitant.FinBrains.utility;
 
-
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -20,6 +19,9 @@ public class JwtUtils {
     @Value("${app.jwt.expiration:86400000}") // 24 hours
     private int jwtExpiration;
 
+    @Value("${app.jwt.rememberExpiration:1209600000}") // 14 days
+    private long rememberExpiration;
+
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
@@ -32,6 +34,17 @@ public class JwtUtils {
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(getSigningKey(), Jwts.SIG.HS256)  // Changed from HS512 to HS256
+                .compact();
+    }
+
+    public String generateJwtToken(String userId, String email, boolean rememberMe) {
+        long exp = rememberMe ? rememberExpiration : jwtExpiration;
+        return Jwts.builder()
+                .subject(userId)
+                .claim("email", email)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + exp))
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
                 .compact();
     }
 

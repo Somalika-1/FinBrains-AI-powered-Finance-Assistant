@@ -9,7 +9,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @Builder
@@ -24,8 +23,8 @@ public class UpdateExpenseRequest {
     @Size(max = 255, message = "Description too long")
     private String description;
 
-    // Multiple categories by ID
-    private List<String> categoryIds;
+    // Single category by ID
+    private String categoryId;
     private String subcategory;
     private LocalDateTime date;
 
@@ -35,7 +34,7 @@ public class UpdateExpenseRequest {
     private String lastFourDigits;
 
     // Optional fields
-    private List<String> tags;
+    private java.util.List<String> tags;
     private Boolean isRecurring;
     private String recurringFrequency;
 }

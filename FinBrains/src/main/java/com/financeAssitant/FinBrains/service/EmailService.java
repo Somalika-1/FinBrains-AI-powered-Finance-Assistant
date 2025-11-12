@@ -10,7 +10,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${app.frontend.url:http://localhost:3000}")
+    @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
     public EmailService(JavaMailSender mailSender) {
@@ -38,6 +38,28 @@ public class EmailService {
         } catch (Exception e) {
             System.err.println("Failed to send verification email: " + e.getMessage());
             // Don't throw exception - allow signup to continue even if email fails
+        }
+    }
+
+    public void sendResetEmail(String toEmail, String firstName, String resetToken) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(toEmail);
+            message.setSubject("Reset Your Finance Assistant Password");
+            message.setText(String.format(
+                    "Hello %s,\n\n" +
+                            "You requested a password reset. Click the link below to set a new password:\n\n" +
+                            "%s/reset-password?token=%s\n\n" +
+                            "This link will expire in 30 minutes.\n\n" +
+                            "If you didn't request this, you can safely ignore this email.\n\n" +
+                            "Best regards,\n" +
+                            "Finance Assistant Team",
+                    firstName, frontendUrl, resetToken
+            ));
+            message.setFrom("noreply@financeassistant.com");
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Failed to send reset email: " + e.getMessage());
         }
     }
 }

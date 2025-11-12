@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @Builder
@@ -16,11 +15,11 @@ public class ExpenseResponse {
     private String id;
     private Double amount;
     private String description;
-    private List<CategoryResponse> categories;
+    private CategoryResponse category;
     private String subcategory;
     private LocalDateTime date;
     private PaymentMethodResponse paymentMethod;
-    private List<String> tags;
+    private java.util.List<String> tags;
     private Boolean isRecurring;
     private String recurringFrequency;
     private LocalDateTime createdAt;

@@ -29,10 +29,22 @@ public class UserService {
     @Autowired
     private EmailService emailService;
 
+    private boolean isStrongPassword(String p) {
+        return p != null && p.length() >= 8 &&
+                p.matches(".*[A-Z].*") &&
+                p.matches(".*[a-z].*") &&
+                p.matches(".*\\d.*") &&
+                p.matches(".*[^A-Za-z0-9].*");
+    }
+
     public AuthResponse signup(SignupRequest signupRequest) {
         // Check if user already exists
         if (userRepository.existsByEmail(signupRequest.getEmail())) {
             throw new RuntimeException("Email already registered!");
+        }
+
+        if (!isStrongPassword(signupRequest.getPassword())) {
+            throw new RuntimeException("Password must be at least 8 characters and include upper, lower, digit, and special character.");
         }
 
         // Create new user
@@ -51,15 +63,16 @@ public class UserService {
         user.setProfile(profile);
 
         // Generate email verification token
-//        String verificationToken = UUID.randomUUID().toString();
-//        user.getAuthentication().setEmailVerificationToken(verificationToken);
+        String verificationToken = UUID.randomUUID().toString();
+        user.getAuthentication().setEmailVerificationToken(verificationToken);
+        user.getAuthentication().setEmailVerified(false);
 
         // Save user
         User savedUser = userRepository.save(user);
 
         // Send verification email
-//        emailService.sendVerificationEmail(user.getEmail(),
-//                user.getProfile().getFirstName(), verificationToken);
+        emailService.sendVerificationEmail(user.getEmail(),
+                user.getProfile().getFirstName(), verificationToken);
 
         // Generate JWT token
         String jwt = jwtUtils.generateJwtToken(savedUser.getId(), savedUser.getEmail());
@@ -86,13 +99,18 @@ public class UserService {
             throw new RuntimeException("Invalid password!");
         }
 
+        if (Boolean.FALSE.equals(user.getAuthentication().getEmailVerified())) {
+            throw new RuntimeException("Please verify your email before logging in.");
+        }
+
         // Update last login
         user.getAuthentication().setLastLogin(LocalDateTime.now());
         user.getMetadata().setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
 
         // Generate JWT token
-        String jwt = jwtUtils.generateJwtToken(user.getId(), user.getEmail());
+        boolean remember = Boolean.TRUE.equals(loginRequest.getRememberMe());
+        String jwt = jwtUtils.generateJwtToken(user.getId(), user.getEmail(), remember);
 
         return AuthResponse.builder()
                 .token(jwt)
@@ -120,6 +138,35 @@ public class UserService {
         user.getAuthentication().setEmailVerificationToken(null);
         user.getMetadata().setUpdatedAt(LocalDateTime.now());
 
+        userRepository.save(user);
+        return true;
+    }
+
+    public void requestPasswordReset(String email) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isEmpty()) return; // do not reveal existence
+        User user = userOptional.get();
+        String token = UUID.randomUUID().toString();
+        user.getAuthentication().setResetToken(token);
+        user.getAuthentication().setResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
+        userRepository.save(user);
+        emailService.sendResetEmail(user.getEmail(), user.getProfile().getFirstName(), token);
+    }
+
+    public boolean resetPassword(String token, String newPassword) {
+        Optional<User> userOptional = userRepository.findByAuthentication_ResetToken(token);
+        if (userOptional.isEmpty()) return false;
+        User user = userOptional.get();
+        if (user.getAuthentication().getResetTokenExpiry() == null || user.getAuthentication().getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            return false;
+        }
+        if (!isStrongPassword(newPassword)) {
+            throw new RuntimeException("Password must be at least 8 characters and include upper, lower, digit, and special character.");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.getAuthentication().setResetToken(null);
+        user.getAuthentication().setResetTokenExpiry(null);
+        user.getMetadata().setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
         return true;
     }

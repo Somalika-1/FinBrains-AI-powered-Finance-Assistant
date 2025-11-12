@@ -30,22 +30,17 @@ public class ExpenseService {
     private CategoryRepository categoryRepository;
 
     public ExpenseResponse createExpense(String userId, CreateExpenseRequest request) {
-        // Map category IDs to embedded CategoryRef list
-        List<Expense.CategoryRef> categoryRefs = null;
-        if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
-            List<Category> categories = categoryRepository.findAllById(request.getCategoryIds());
-            // Validate that all provided IDs exist
-            if (categories.size() != request.getCategoryIds().size()) {
-                throw new IllegalArgumentException("One or more category IDs are invalid");
+        // Resolve single categoryId to Category (DBRef)
+        Category categoryEntity = null;
+        if (request.getCategoryId() != null && !request.getCategoryId().isBlank()) {
+            Category category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid category ID"));
+            boolean isGlobal = category.getUserId() == null || category.isPredefined();
+            boolean isOwnedByUser = userId.equals(category.getUserId());
+            if (!isGlobal && !isOwnedByUser) {
+                throw new IllegalArgumentException("Category does not belong to the current user");
             }
-            // Validate ownership
-            boolean allOwnedByUser = categories.stream().allMatch(c -> userId.equals(c.getUserId()));
-            if (!allOwnedByUser) {
-                throw new IllegalArgumentException("One or more categories do not belong to the current user");
-            }
-            categoryRefs = categories.stream()
-                    .map(c -> Expense.CategoryRef.builder().id(c.getId()).name(c.getName()).build())
-                    .collect(Collectors.toList());
+            categoryEntity = category;
         }
 
         // Build expense entity
@@ -56,7 +51,7 @@ public class ExpenseService {
                 .date(request.getDate() != null ? request.getDate() : LocalDateTime.now())
                 .subcategory(request.getSubcategory())
                 .tags(request.getTags())
-                .categories(categoryRefs)
+                .category(categoryEntity)
                 .paymentMethod(Expense.PaymentMethod.builder()
                         .type(request.getPaymentType() != null ? request.getPaymentType() : "cash")
                         .provider(request.getPaymentProvider())
@@ -98,19 +93,19 @@ public class ExpenseService {
         if (request.getDate() != null) {
             expense.setDate(request.getDate());
         }
-        if (request.getCategoryIds() != null) {
-            List<Category> categories = categoryRepository.findAllById(request.getCategoryIds());
-            if (categories.size() != request.getCategoryIds().size()) {
-                throw new IllegalArgumentException("One or more category IDs are invalid");
+        if (request.getCategoryId() != null) {
+            if (request.getCategoryId().isBlank()) {
+                expense.setCategory(null);
+            } else {
+                Category category = categoryRepository.findById(request.getCategoryId())
+                        .orElseThrow(() -> new IllegalArgumentException("Invalid category ID"));
+                boolean isGlobal = category.getUserId() == null || category.isPredefined();
+                boolean isOwnedByUser = userId.equals(category.getUserId());
+                if (!isGlobal && !isOwnedByUser) {
+                    throw new IllegalArgumentException("Category does not belong to the current user");
+                }
+                expense.setCategory(category);
             }
-            boolean allOwnedByUser = categories.stream().allMatch(c -> userId.equals(c.getUserId()));
-            if (!allOwnedByUser) {
-                throw new IllegalArgumentException("One or more categories do not belong to the current user");
-            }
-            List<Expense.CategoryRef> refs = categories.stream()
-                    .map(c -> Expense.CategoryRef.builder().id(c.getId()).name(c.getName()).build())
-                    .collect(Collectors.toList());
-            expense.setCategories(refs);
         }
         if (request.getSubcategory() != null) {
             expense.setSubcategory(request.getSubcategory());
@@ -184,7 +179,7 @@ public class ExpenseService {
     }
 
     public List<ExpenseResponse> getExpensesByCategory(String userId, String categoryId) {
-        List<Expense> expenses = expenseRepository.findByUserIdAndCategories_IdOrderByDateDesc(userId, categoryId);
+        List<Expense> expenses = expenseRepository.findByUserIdAndCategory_IdOrderByDateDesc(userId, categoryId);
         return expenses.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
@@ -237,13 +232,11 @@ public class ExpenseService {
                 .recurringFrequency(expense.getRecurring() != null ? expense.getRecurring().getFrequency() : null)
                 .createdAt(expense.getMetadata() != null ? expense.getMetadata().getCreatedAt() : null)
                 .updatedAt(expense.getMetadata() != null ? expense.getMetadata().getUpdatedAt() : null)
-                .categories(expense.getCategories() != null ?
-                        expense.getCategories().stream()
-                                .map(c -> ExpenseResponse.CategoryResponse.builder()
-                                        .id(c.getId())
-                                        .name(c.getName())
-                                        .build())
-                                .collect(Collectors.toList()) : null)
+                .category(expense.getCategory() != null ?
+                        ExpenseResponse.CategoryResponse.builder()
+                                .id(expense.getCategory().getId())
+                                .name(expense.getCategory().getName())
+                                .build() : null)
                 .paymentMethod(expense.getPaymentMethod() != null ?
                         ExpenseResponse.PaymentMethodResponse.builder()
                                 .type(expense.getPaymentMethod().getType())

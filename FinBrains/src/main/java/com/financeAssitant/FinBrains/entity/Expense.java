@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,22 +27,14 @@ public class Expense {
 
     private Double amount;
     private String description;
-    private List<CategoryRef> categories;
+    @DBRef
+    private Category category;
     private String subcategory;
     private LocalDateTime date;
     private PaymentMethod paymentMethod;
     private List<String> tags;
     private Recurring recurring;
     private Metadata metadata;
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class CategoryRef {
-        private String id;
-        private String name;
-    }
 
     @Data
     @NoArgsConstructor

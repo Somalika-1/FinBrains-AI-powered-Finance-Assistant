@@ -23,11 +23,11 @@ public interface ExpenseRepository extends MongoRepository<Expense, String> {
     List<Expense> findByUserIdAndDateBetweenOrderByDateDesc(String userId, LocalDateTime startDate, LocalDateTime endDate);
     Page<Expense> findByUserIdAndDateBetweenOrderByDateDesc(String userId, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
 
-    // Category queries (list field categories.id)
-    List<Expense> findByUserIdAndCategories_IdOrderByDateDesc(String userId, String categoryId);
-    Page<Expense> findByUserIdAndCategories_IdOrderByDateDesc(String userId, String categoryId, Pageable pageable);
-    List<Expense> findByCategories_Id(String categoryId);
-    List<Expense> findByUserIdAndCategories_Id(String userId, String categoryId);
+    // Category queries (single embedded field category.id)
+    List<Expense> findByUserIdAndCategory_IdOrderByDateDesc(String userId, String categoryId);
+    Page<Expense> findByUserIdAndCategory_IdOrderByDateDesc(String userId, String categoryId, Pageable pageable);
+    List<Expense> findByCategory_Id(String categoryId);
+    List<Expense> findByUserIdAndCategory_Id(String userId, String categoryId);
 
     // Amount range queries
     List<Expense> findByUserIdAndAmountBetweenOrderByDateDesc(String userId, Double minAmount, Double maxAmount);
@@ -44,7 +44,7 @@ public interface ExpenseRepository extends MongoRepository<Expense, String> {
             "$and: [" +
             "  { $or: [ { 'date': { $gte: ?1 } }, { ?1: null } ] }, " +
             "  { $or: [ { 'date': { $lte: ?2 } }, { ?2: null } ] }, " +
-            "  { $or: [ { 'categories.id': ?3 }, { ?3: null } ] }, " +
+            "  { $or: [ { 'category.id': ?3 }, { ?3: null } ] }, " +
             "  { $or: [ { 'amount': { $gte: ?4 } }, { ?4: null } ] }, " +
             "  { $or: [ { 'amount': { $lte: ?5 } }, { ?5: null } ] }, " +
             "  { $or: [ { 'description': { $regex: ?6, $options: 'i' } }, { ?6: null } ] } " +
@@ -55,7 +55,7 @@ public interface ExpenseRepository extends MongoRepository<Expense, String> {
 
     // Aggregation queries for analytics
     @Query(value = "{ 'userId': ?0, 'date': { $gte: ?1, $lte: ?2 } }",
-            fields = "{ 'amount': 1, 'categories': 1, 'date': 1 }")
+            fields = "{ 'amount': 1, 'category': 1, 'date': 1 }")
     List<Expense> findExpenseSummaryByUserIdAndDateRange(String userId, LocalDateTime startDate, LocalDateTime endDate);
 
     // Monthly total
@@ -63,7 +63,7 @@ public interface ExpenseRepository extends MongoRepository<Expense, String> {
     List<Expense> findByUserIdAndCurrentMonth(String userId, LocalDateTime monthStart, LocalDateTime monthEnd);
 
     // Count queries
-    long countByUserIdAndCategories_Id(String userId, String categoryId);
+    long countByUserIdAndCategory_Id(String userId, String categoryId);
 
     // Delete queries
     void deleteByIdAndUserId(String id, String userId); // Security: user can only delete their expenses

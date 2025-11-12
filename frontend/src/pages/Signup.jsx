@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, User, Mail, Lock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Signup() {
     const [isLogin, setIsLogin] = useState(true);
@@ -12,6 +14,9 @@ export default function Signup() {
         confirmPassword: ''
     });
     const [errors, setErrors] = useState({});
+    const [apiError, setApiError] = useState('');
+    const { login, register, loading } = useAuth();
+    const navigate = useNavigate();
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -49,11 +54,30 @@ export default function Signup() {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = () => {
-        if (validateForm()) {
-            // Handle form submission
-            console.log('Form submitted:', formData);
-            alert(isLogin ? 'Login successful!' : 'Signup successful!');
+    const handleSubmit = async () => {
+        if (!validateForm()) return;
+        setApiError('');
+        if (isLogin) {
+            const res = await login({ email: formData.email, password: formData.password });
+            if (res.success) navigate('/dashboard');
+            else setApiError(res.message || 'Login failed');
+        } else {
+            const parts = (formData.name || '').trim().split(/\s+/);
+            const firstName = parts[0] || '';
+            const lastName = parts.slice(1).join(' ') || '';
+            const payload = {
+              firstName,
+              lastName,
+              email: formData.email,
+              password: formData.password,
+              phone: '',
+              dateOfBirth: '',
+              occupation: '',
+              monthlyIncome: null,
+            };
+            const res = await register(payload);
+            if (res.success) navigate('/login');
+            else setApiError(res.message || 'Signup failed');
         }
     };
 
@@ -100,6 +124,7 @@ export default function Signup() {
                     </div>
 
                     <div className="space-y-6">
+                        {apiError && (<div className="text-sm text-red-700 bg-red-100 rounded p-2">{apiError}</div>)}
                         {/* Name Field (Signup only) */}
                         {!isLogin && (
                             <div>
@@ -202,9 +227,10 @@ export default function Signup() {
                         <button
                             type="button"
                             onClick={handleSubmit}
-                            className="w-full py-3 bg-gradient-to-r from-[#FF8C8C] via-[#FF6767] to-[#B02E2E] text-white font-semibold rounded-lg  hover:from-[#FF7676] hover:to-[#A52121]  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200 transform hover:scale-105"
+                            disabled={loading}
+                            className="w-full py-3 bg-gradient-to-r from-[#FF8C8C] via-[#FF6767] to-[#B02E2E] text-white font-semibold rounded-lg  hover:from-[#FF7676] hover:to-[#A52121]  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200 transform hover:scale-105 disabled:opacity-60"
                         >
-                            {isLogin ? 'Sign In' : 'Create Account'}
+                            {loading ? (isLogin ? 'Signing In...' : 'Creating Account...') : (isLogin ? 'Sign In' : 'Create Account')}
                         </button>
                     </div>
 

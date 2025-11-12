@@ -1,6 +1,5 @@
 package com.financeAssitant.FinBrains.entity;
 
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,6 +10,8 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Document(collection = "users")
 @Data
@@ -36,6 +37,9 @@ public class User {
 
     @Builder.Default
     private Metadata metadata = new Metadata();
+
+    @Builder.Default
+    private List<String> roles = new ArrayList<>(List.of("USER"));
 
     // Custom constructor to ensure proper initialization
     public User(String email, String password) {
@@ -79,9 +83,11 @@ public class User {
         private String googleId;
 
         @Builder.Default
-        private Boolean emailVerified = true; //for now only change later
+        private Boolean emailVerified = true;
 
         private String emailVerificationToken;
+        private String resetToken;
+        private LocalDateTime resetTokenExpiry;
         private LocalDateTime lastLogin;
     }
 
