@@ -1,4 +1,5 @@
 import api from './axios';
+import axios from 'axios';
 
 export const login = (payload) => api.post('/api/auth/login', payload);
 export const register = (payload) => api.post('/api/auth/signup', payload);
@@ -29,3 +30,8 @@ export const getCurrentBudget = () => api.get('/api/budget/current');
 export const getBudgetStatus = (month) => api.get('/api/budget/status', { params: month ? { month } : undefined });
 export const getBudgetHistory = (from, to) => api.get('/api/budget/history', { params: { from, to } });
 export const getBudgetBreakdown = (month) => api.get('/api/budget/breakdown', { params: { month } });
+
+export const getFinanceInsights = (payload) => {
+  const baseURL = import.meta.env.VITE_INSIGHTS_API_URL || "http://localhost:8000";
+  return axios.post(`${baseURL}/finance-insights`, payload);
+};

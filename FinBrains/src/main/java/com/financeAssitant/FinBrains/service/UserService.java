@@ -62,17 +62,16 @@ public class UserService {
         profile.setMonthlyIncome(signupRequest.getMonthlyIncome());
         user.setProfile(profile);
 
-        // Generate email verification token
-        String verificationToken = UUID.randomUUID().toString();
-        user.getAuthentication().setEmailVerificationToken(verificationToken);
-        user.getAuthentication().setEmailVerified(false);
+        // Initialize metadata timestamps
+        user.getAuthentication().setEmailVerified(true);
+        user.getAuthentication().setEmailVerificationToken(null);
+        user.getMetadata().setCreatedAt(LocalDateTime.now());
+        user.getMetadata().setUpdatedAt(LocalDateTime.now());
 
         // Save user
         User savedUser = userRepository.save(user);
 
-        // Send verification email
-        emailService.sendVerificationEmail(user.getEmail(),
-                user.getProfile().getFirstName(), verificationToken);
+        // Skip sending verification email (feature disabled)
 
         // Generate JWT token
         String jwt = jwtUtils.generateJwtToken(savedUser.getId(), savedUser.getEmail());
@@ -99,9 +98,7 @@ public class UserService {
             throw new RuntimeException("Invalid password!");
         }
 
-        if (Boolean.FALSE.equals(user.getAuthentication().getEmailVerified())) {
-            throw new RuntimeException("Please verify your email before logging in.");
-        }
+        // Email verification disabled; allow login without checking emailVerified
 
         // Update last login
         user.getAuthentication().setLastLogin(LocalDateTime.now());
@@ -109,8 +106,7 @@ public class UserService {
         userRepository.save(user);
 
         // Generate JWT token
-        boolean remember = Boolean.TRUE.equals(loginRequest.getRememberMe());
-        String jwt = jwtUtils.generateJwtToken(user.getId(), user.getEmail(), remember);
+        String jwt = jwtUtils.generateJwtToken(user.getId(), user.getEmail());
 
         return AuthResponse.builder()
                 .token(jwt)
@@ -142,7 +138,7 @@ public class UserService {
         return true;
     }
 
-    public void requestPasswordReset(String email) {
+    public void requestPasswordReset(String email, String redirectUrl) {
         Optional<User> userOptional = userRepository.findByEmail(email);
         if (userOptional.isEmpty()) return; // do not reveal existence
         User user = userOptional.get();
@@ -150,7 +146,7 @@ public class UserService {
         user.getAuthentication().setResetToken(token);
         user.getAuthentication().setResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
         userRepository.save(user);
-        emailService.sendResetEmail(user.getEmail(), user.getProfile().getFirstName(), token);
+        emailService.sendResetEmail(user.getEmail(), user.getProfile().getFirstName(), token, redirectUrl);
     }
 
     public boolean resetPassword(String token, String newPassword) {

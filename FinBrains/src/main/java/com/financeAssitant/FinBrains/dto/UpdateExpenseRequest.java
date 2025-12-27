@@ -23,6 +23,9 @@ public class UpdateExpenseRequest {
     @Size(max = 255, message = "Description too long")
     private String description;
 
+    // EXPENSE or INCOME
+    private String type;
+
     // Single category by ID
     private String categoryId;
     private String subcategory;
@@ -37,4 +40,6 @@ public class UpdateExpenseRequest {
     private java.util.List<String> tags;
     private Boolean isRecurring;
     private String recurringFrequency;
+    private java.time.LocalDate startDate;
+    private java.time.LocalDate endDate;
 }

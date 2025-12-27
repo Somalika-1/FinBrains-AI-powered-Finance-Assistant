@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +30,14 @@ public class CategoryService {
                         .build());
             }
         });
+        // Ensure mandatory Monthly Income category exists
+        if (!categoryRepository.existsByUserIdAndNameIgnoreCase(userId, "Monthly Income")) {
+            categoryRepository.save(Category.builder()
+                    .userId(userId)
+                    .name("Monthly Income")
+                    .isPredefined(true)
+                    .build());
+        }
         return categoryRepository.findByUserIdOrderByNameAsc(userId);
     }
 
@@ -53,16 +63,29 @@ public class CategoryService {
         if (!userId.equals(cat.getUserId())) {
             throw new IllegalArgumentException("You cannot delete categories of another user");
         }
+        if ("Monthly Income".equalsIgnoreCase(cat.getName())) {
+            throw new IllegalArgumentException("'Monthly Income' category cannot be deleted");
+        }
+        // Determine current month window
+        YearMonth ym = YearMonth.now();
+        LocalDateTime start = ym.atDay(1).atStartOfDay();
+        LocalDateTime end = ym.atEndOfMonth().atTime(23, 59, 59);
 
-        categoryRepository.deleteById(id);
+        // 1) Delete expenses in current month with this category
+        expenseRepository.deleteByUserIdAndCategory_IdAndDateBetween(userId, id, start, end);
 
-        // Remove references from only this user's expenses (single category)
-        var expenses = expenseRepository.findByUserIdAndCategory_Id(userId, id);
-        expenses.forEach(expense -> {
-            if (expense.getCategory() != null && id.equals(expense.getCategory().getId())) {
+        // 2) For expenses outside current month, remove the category reference
+        var allWithCategory = expenseRepository.findByUserIdAndCategory_Id(userId, id);
+        allWithCategory.forEach(expense -> {
+            LocalDateTime d = expense.getDate();
+            boolean inCurrent = d != null && !d.isBefore(start) && !d.isAfter(end);
+            if (!inCurrent && expense.getCategory() != null && id.equals(expense.getCategory().getId())) {
                 expense.setCategory(null);
             }
         });
-        expenseRepository.saveAll(expenses);
+        expenseRepository.saveAll(allWithCategory);
+
+        // Finally delete the category
+        categoryRepository.deleteById(id);
     }
 }

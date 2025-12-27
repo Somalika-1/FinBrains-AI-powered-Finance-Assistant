@@ -78,9 +78,24 @@ public class AuthController {
         }
     }
 
+    // Alias: backend verification link
+    @GetMapping("/verify")
+    public ResponseEntity<?> verify(@RequestParam String token) {
+        Map<String, Object> response = new HashMap<>();
+        if (userService.verifyEmail(token)) {
+            response.put("success", true);
+            response.put("message", "Email verified successfully!");
+            return ResponseEntity.ok(response);
+        }
+        response.put("success", false);
+        response.put("message", "Invalid or expired verification token!");
+        return ResponseEntity.badRequest().body(response);
+    }
+
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestParam String email) {
-        userService.requestPasswordReset(email);
+    public ResponseEntity<?> forgotPassword(@RequestParam String email,
+                                            @RequestParam(name = "redirectUrl", required = false) String redirectUrl) {
+        userService.requestPasswordReset(email, redirectUrl);
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "If an account exists for this email, a reset link has been sent"

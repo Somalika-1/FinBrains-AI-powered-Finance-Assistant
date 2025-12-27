@@ -68,4 +68,9 @@ public interface ExpenseRepository extends MongoRepository<Expense, String> {
     // Delete queries
     void deleteByIdAndUserId(String id, String userId); // Security: user can only delete their expenses
     long deleteByUserIdAndDateBefore(String userId, LocalDateTime beforeDate); // Cleanup old expenses
+    long deleteByUserIdAndCategory_IdAndDateBetween(String userId, String categoryId, LocalDateTime start, LocalDateTime end);
+
+    // Recurring queries
+    List<Expense> findByUserIdAndRecurring_IsRecurringTrue(String userId);
+    List<Expense> findByRecurring_IsRecurringTrueAndRecurring_NextDueLessThanEqual(LocalDateTime dueBeforeOrEqual);
 }

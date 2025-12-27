@@ -5,7 +5,20 @@ import { login as loginApi, register as registerApi, verifyEmail as verifyEmailA
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem(STORAGE_KEYS.token));
+  const [token, setToken] = useState(() => {
+    const primary = localStorage.getItem(STORAGE_KEYS.token);
+    if (primary) return primary;
+    const alt =
+      localStorage.getItem('token') ||
+      localStorage.getItem('jwt') ||
+      localStorage.getItem('accessToken') ||
+      localStorage.getItem('access_token');
+    if (alt) {
+      try { localStorage.setItem(STORAGE_KEYS.token, alt); } catch {}
+      return alt;
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -17,7 +30,17 @@ export function AuthProvider({ children }) {
     setLoading(true);
     try {
       const { data } = await loginApi({ email, password, rememberMe });
-      const jwt = data?.data?.token || data?.token || data?.jwt;
+      const jwt =
+        data?.data?.token ||
+        data?.token ||
+        data?.jwt ||
+        data?.data?.accessToken ||
+        data?.accessToken ||
+        data?.data?.access_token ||
+        data?.access_token;
+      if (jwt) {
+        try { localStorage.setItem(STORAGE_KEYS.token, jwt); } catch {}
+      }
       setToken(jwt);
       return { success: true };
     } catch (e) {
@@ -31,10 +54,8 @@ export function AuthProvider({ children }) {
     setLoading(true);
     try {
       const { data } = await registerApi(payload);
-      // Some APIs auto-login on register and return token; if not, redirect to login
-      const jwt = data?.data?.token || data?.token || data?.jwt;
-      if (jwt) setToken(jwt);
-      return { success: true };
+      // Do NOT auto-login after signup; require email verification
+      return { success: true, data };
     } catch (e) {
       return { success: false, message: e?.response?.data?.message || 'Signup failed' };
     } finally {

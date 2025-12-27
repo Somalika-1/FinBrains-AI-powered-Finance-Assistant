@@ -5,6 +5,7 @@ export default function Categories() {
   const [categories, setCategories] = useState([]);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const load = async () => {
     try {
@@ -44,6 +45,12 @@ export default function Categories() {
         </div>
       </div>
 
+      {error && (
+        <div className="rounded-md border border-red-200 bg-red-50 text-red-700 p-3 text-sm">
+          {error}
+        </div>
+      )}
+
       <div className="rounded-xl border border-gray-100 bg-white shadow p-4">
         {items.length === 0 ? (
           <div className="text-center text-gray-500">No categories yet</div>
@@ -55,8 +62,22 @@ export default function Categories() {
                 <button
                   className="text-red-600 hover:text-red-700"
                   onClick={async ()=>{
+                    // Protect predefined/non-deletable categories on the client side
+                    const isProtected = (c?.name && c.name.toLowerCase() === 'monthly income') || !!c?.isPredefined;
+                    if (isProtected) {
+                      setError("This category is pre-added and cannot be deleted.");
+                      setTimeout(()=>setError(''), 3500);
+                      return;
+                    }
                     if (!window.confirm('Deleting this category will also remove all related expenses. Are you sure?')) return;
-                    try { await deleteCategory(c.id || c._id || c.name); await load(); } catch {}
+                    try {
+                      await deleteCategory(c.id || c._id || c.name);
+                      await load();
+                    } catch (e) {
+                      const msg = e?.response?.data?.message || 'Failed to delete category';
+                      setError(msg);
+                      setTimeout(()=>setError(''), 3500);
+                    }
                   }}
                 >✕</button>
               </div>

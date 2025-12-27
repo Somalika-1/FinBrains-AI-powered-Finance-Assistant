@@ -10,6 +10,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 @Document(collection = "expenses")
@@ -36,6 +37,11 @@ public class Expense {
     private Recurring recurring;
     private Metadata metadata;
 
+    public enum ExpenseType { EXPENSE, INCOME }
+
+    @Builder.Default
+    private ExpenseType type = ExpenseType.EXPENSE;
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -57,9 +63,11 @@ public class Expense {
         @Builder.Default
         private Boolean isRecurring = false;
 
-        private String frequency; // daily, weekly, monthly, yearly
+        private String frequency; // DAILY, WEEKLY, MONTHLY, QUARTERLY, YEARLY, CUSTOM
         private LocalDateTime nextDue;
         private String recurringGroupId;
+        private LocalDate startDate;
+        private LocalDate endDate;
     }
 
     @Data

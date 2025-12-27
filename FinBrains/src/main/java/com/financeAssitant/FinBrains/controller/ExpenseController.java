@@ -183,4 +183,81 @@ public class ExpenseController {
             return ResponseEntity.badRequest().body(response);
         }
     }
+
+    // List recurring expenses
+    @GetMapping("/recurring")
+    public ResponseEntity<?> getRecurring(@RequestHeader(value = "User-ID", required = false) String userIdHeader) {
+        try {
+            String userId = resolveUserId(userIdHeader);
+            List<ExpenseResponse> items = expenseService.getRecurringExpenses(userId);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", items);
+            response.put("count", items.size());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    // Update recurring config for an expense
+    @PutMapping("/{expenseId}/recurring")
+    public ResponseEntity<?> updateRecurring(@RequestHeader(value = "User-ID", required = false) String userIdHeader,
+                                             @PathVariable String expenseId,
+                                             @RequestParam(required = false) Boolean isRecurring,
+                                             @RequestParam(required = false, name = "interval") String recurringInterval) {
+        try {
+            String userId = resolveUserId(userIdHeader);
+            ExpenseResponse out = expenseService.updateRecurring(userId, expenseId, isRecurring, recurringInterval);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Recurring settings updated",
+                    "data", out
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/balance")
+    public ResponseEntity<?> getBalance(@RequestHeader(value = "User-ID", required = false) String userIdHeader) {
+        try {
+            String userId = resolveUserId(userIdHeader);
+            double balance = expenseService.getBalance(userId);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "data", Map.of("balance", balance)
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/monthly-income")
+    public ResponseEntity<?> getMonthlyIncome(@RequestHeader(value = "User-ID", required = false) String userIdHeader,
+                                              @RequestParam(required = false) String month) {
+        try {
+            String userId = resolveUserId(userIdHeader);
+            java.time.YearMonth ym = (month != null && !month.isBlank()) ? java.time.YearMonth.parse(month) : java.time.YearMonth.now();
+            double income = expenseService.getMonthlyIncome(userId, ym);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "data", Map.of("month", ym.toString(), "income", income)
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        }
+    }
 }

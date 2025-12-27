@@ -21,8 +21,8 @@ api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error?.response?.status === 401) {
-      localStorage.removeItem(STORAGE_KEYS.token);
-      // optional: window.location = '/login';
+      // Do not clear token automatically here to avoid redirect loops on initial loads.
+      // Let the caller/route guard decide what to do.
     }
     return Promise.reject(error);
   }

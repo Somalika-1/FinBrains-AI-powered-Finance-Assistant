@@ -3,6 +3,7 @@ package com.financeAssitant.FinBrains.service;
 import com.financeAssitant.FinBrains.entity.Budget;
 import com.financeAssitant.FinBrains.repository.BudgetRepository;
 import com.financeAssitant.FinBrains.repository.ExpenseRepository;
+import com.financeAssitant.FinBrains.entity.Expense;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -46,7 +47,10 @@ public class BudgetService {
         LocalDateTime endDt = endDay.atTime(23,59,59);
 
         List<com.financeAssitant.FinBrains.entity.Expense> exps = expenseRepository.findByUserIdAndCurrentMonth(userId, startDt, endDt);
-        double spent = exps.stream().mapToDouble(e -> e.getAmount() != null ? e.getAmount() : 0.0).sum();
+        double spent = exps.stream()
+                .filter(e -> e.getType() == null || e.getType() == Expense.ExpenseType.EXPENSE)
+                .mapToDouble(e -> e.getAmount() != null ? e.getAmount() : 0.0)
+                .sum();
         double budgetAmt = budget != null && budget.getAmount() != null ? budget.getAmount() : 0.0;
         double remaining = budgetAmt - spent;
         double percentage = budgetAmt > 0 ? (spent / budgetAmt) * 100.0 : 0.0;
@@ -79,6 +83,7 @@ public class BudgetService {
         Map<String, Double> byCat = new HashMap<>();
         double total = 0.0;
         for (var e : exps) {
+            if (e.getType() != null && e.getType() == Expense.ExpenseType.INCOME) continue; // ignore INCOME for budgets
             String name = e.getCategory() != null ? (e.getCategory().getName() != null ? e.getCategory().getName() : "Uncategorized") : "Uncategorized";
             double amt = e.getAmount() != null ? e.getAmount() : 0.0;
             byCat.put(name, byCat.getOrDefault(name, 0.0) + amt);
